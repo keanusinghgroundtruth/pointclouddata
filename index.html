@@ -111,50 +111,49 @@
 			
 			scene.addPointCloud(pointcloud);
 			
-			// 1. Calculate ground spawn position
-			let bb = pointcloud.boundingBox;
-			let center = bb.getCenter(new THREE.Vector3());
-			let groundLevel = bb.min.z; // Assuming Z is the vertical axis
+			// 1. Zoom to fit the entire point cloud perfectly (Guarantees we don't spawn in the void)
+			viewer.fitToScreen();
 			
-			// Move camera to center of site, 2 meters above the ground
-			viewer.scene.view.position.set(center.x, center.y, groundLevel + 2);
-			viewer.scene.view.lookAt(new THREE.Vector3(center.x, center.y + 10, groundLevel + 2));
-			
-			// 2. NOW activate First-Person mode
+			// 2. Activate First-Person mode from this safe bird's-eye view
 			viewer.setControls(viewer.fpControls);
+
+			// Automatically calculate a good flying speed based on the size of the point cloud
+			let radius = pointcloud.boundingSphere.radius;
+			viewer.getControls().speed = radius * 0.05; 
 
 			// === CREATE A VISIBLE HOLOGRAPHIC ROBOT DRONE ===
 			let robotGroup = new THREE.Group();
 			
-			// Make it bigger and more visible (A glowing sci-fi sphere)
+			// Scale the drone dynamically so it matches your data's unique units (meters, feet, etc)
+			let droneScale = radius * 0.015; // 1.5% of the total scene size
+			robotGroup.scale.set(droneScale, droneScale, droneScale);
+			
 			let bodyGeo = new THREE.SphereGeometry(0.5, 16, 16);
 			let bodyMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc, wireframe: true });
 			let body = new THREE.Mesh(bodyGeo, bodyMat);
 			robotGroup.add(body);
 			
-			// Add a white "eye" to see which way it's facing
 			let eyeGeo = new THREE.BoxGeometry(0.8, 0.2, 0.3);
 			let eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
 			let eye = new THREE.Mesh(eyeGeo, eyeMat);
-			eye.position.set(0, 0.2, -0.4); // Positioned on the front
+			eye.position.set(0, 0.2, -0.4); 
 			robotGroup.add(eye);
 			
 			viewer.scene.scene.add(robotGroup);
 			
 			viewer.addEventListener("update", () => {
 				let camera = viewer.scene.getActiveCamera();
-				if (!camera) return; // Wait until camera is ready
+				if (!camera) return; 
 				
-				// Calculate a fixed position in front of the camera using Matrix Math
-				let offset = new THREE.Vector3(0, -0.5, -4); // 0.5m down, 4m forward
+				// Keep the drone exactly in front of the camera, scaled to the correct distance
+				let offset = new THREE.Vector3(0, -0.5 * droneScale, -3 * droneScale);
 				offset.applyMatrix4(camera.matrixWorld);
 				
 				robotGroup.position.copy(offset);
 				robotGroup.quaternion.copy(camera.quaternion);
 				
-				// Add a floating bobbing effect
 				let time = performance.now() * 0.003;
-				robotGroup.translateY(Math.sin(time) * 0.2);
+				robotGroup.translateY(Math.sin(time) * (droneScale * 0.1));
 			});
 			// === END ROBOT DRONE CODE ===
 		});
