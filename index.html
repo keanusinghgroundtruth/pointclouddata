@@ -124,36 +124,44 @@
 			// === CREATE A VISIBLE HOLOGRAPHIC ROBOT DRONE ===
 			let robotGroup = new THREE.Group();
 			
-			// Scale the drone dynamically so it matches your data's unique units (meters, feet, etc)
-			let droneScale = radius * 0.015; // 1.5% of the total scene size
-			robotGroup.scale.set(droneScale, droneScale, droneScale);
-			
-			let bodyGeo = new THREE.SphereGeometry(0.5, 16, 16);
-			let bodyMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc, wireframe: true });
+			// 1. Build a Sci-Fi Saucer Body
+			let bodyGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.2, 16); 
+			bodyGeo.rotateX(Math.PI / 2);
+			// depthTest: false forces it to render ON TOP of the points so it never gets buried!
+			let bodyMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc, wireframe: true, depthTest: false, transparent: true });
 			let body = new THREE.Mesh(bodyGeo, bodyMat);
 			robotGroup.add(body);
 			
-			let eyeGeo = new THREE.BoxGeometry(0.8, 0.2, 0.3);
-			let eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+			// 2. Build the glowing eye
+			let eyeGeo = new THREE.BoxGeometry(0.6, 0.15, 0.2);
+			let eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false });
 			let eye = new THREE.Mesh(eyeGeo, eyeMat);
-			eye.position.set(0, 0.2, -0.4); 
+			eye.position.set(0, 0, -0.4); 
 			robotGroup.add(eye);
 			
+			robotGroup.renderOrder = 999; // Ensure it draws last (on top)
 			viewer.scene.scene.add(robotGroup);
 			
 			viewer.addEventListener("update", () => {
 				let camera = viewer.scene.getActiveCamera();
 				if (!camera) return; 
 				
-				// Keep the drone exactly in front of the camera, scaled to the correct distance
-				let offset = new THREE.Vector3(0, -0.5 * droneScale, -3 * droneScale);
+				// 3. Guarantee it stays visible by pinning it just past the camera's near clipping plane
+				let safeDistance = camera.near + 0.5; 
+				let safeScale = safeDistance * 0.2; 
+				
+				robotGroup.scale.set(safeScale, safeScale, safeScale);
+				
+				// Place it slightly down and right in front of the lens
+				let offset = new THREE.Vector3(0, -0.3 * safeDistance, -safeDistance);
 				offset.applyMatrix4(camera.matrixWorld);
 				
 				robotGroup.position.copy(offset);
 				robotGroup.quaternion.copy(camera.quaternion);
 				
+				// 4. Gentle hover animation
 				let time = performance.now() * 0.003;
-				robotGroup.translateY(Math.sin(time) * (droneScale * 0.1));
+				robotGroup.translateY(Math.sin(time) * (safeScale * 0.1));
 			});
 			// === END ROBOT DRONE CODE ===
 		});
