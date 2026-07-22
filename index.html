@@ -102,6 +102,48 @@
 			viewer.toggleSidebar();
 		});
 
+		// === CREATE A HOLOGRAPHIC ROBOT DRONE ===
+		// We use Three.js (built into Potree) to build a robot out of basic 3D shapes
+		let robotGroup = new THREE.Group();
+		
+		// Robot Body (Cyan Wireframe Cylinder)
+		let bodyGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.8, 16);
+		let bodyMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc, wireframe: true });
+		let body = new THREE.Mesh(bodyGeo, bodyMat);
+		robotGroup.add(body);
+		
+		// Robot 'Eye' / Scanner (Solid White Box)
+		let eyeGeo = new THREE.BoxGeometry(0.4, 0.1, 0.2);
+		let eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+		let eye = new THREE.Mesh(eyeGeo, eyeMat);
+		eye.position.set(0, 0.2, -0.3); // Positioned on the front
+		robotGroup.add(eye);
+		
+		// Add the robot to the Potree 3D scene
+		viewer.scene.scene.add(robotGroup);
+		
+		// Update loop to keep the robot in front of the camera (Third-Person View)
+		viewer.addEventListener("update", () => {
+			let camera = viewer.scene.getActiveCamera();
+			
+			// Calculate the position: 2.5 meters in front of the camera, 0.8 meters down
+			let forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+			let down = new THREE.Vector3(0, -1, 0).applyQuaternion(camera.quaternion);
+			
+			let offset = forward.clone().multiplyScalar(2.5).add(down.clone().multiplyScalar(0.8));
+			
+			// Move robot to the offset position
+			robotGroup.position.copy(camera.position).add(offset);
+			
+			// Make robot face the same direction you look
+			robotGroup.quaternion.copy(camera.quaternion);
+			
+			// Add a futuristic hovering animation (bobbing up and down)
+			let time = performance.now() * 0.003;
+			robotGroup.position.add(down.clone().multiplyScalar(Math.sin(time) * 0.15));
+		});
+		// === END ROBOT DRONE CODE ===
+
 		Potree.loadPointCloud("./pointclouds/index/metadata.json", "index", e => {
 			let scene = viewer.scene;
 			let pointcloud = e.pointcloud;
