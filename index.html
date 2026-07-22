@@ -121,47 +121,38 @@
 			let radius = pointcloud.boundingSphere.radius;
 			viewer.getControls().speed = radius * 0.05; 
 
-			// === CREATE A VISIBLE HOLOGRAPHIC ROBOT DRONE ===
+			// === CREATE A VISIBLE HOLOGRAPHIC ROBOT DRONE (CAMERA-ATTACHED) ===
 			let robotGroup = new THREE.Group();
 			
 			// 1. Build a Sci-Fi Saucer Body
-			let bodyGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.2, 16); 
+			let bodyGeo = new THREE.CylinderGeometry(1, 1, 0.3, 16); 
 			bodyGeo.rotateX(Math.PI / 2);
-			// depthTest: false forces it to render ON TOP of the points so it never gets buried!
 			let bodyMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc, wireframe: true, depthTest: false, transparent: true });
 			let body = new THREE.Mesh(bodyGeo, bodyMat);
 			robotGroup.add(body);
 			
 			// 2. Build the glowing eye
-			let eyeGeo = new THREE.BoxGeometry(0.6, 0.15, 0.2);
+			let eyeGeo = new THREE.BoxGeometry(0.8, 0.2, 0.3);
 			let eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false });
 			let eye = new THREE.Mesh(eyeGeo, eyeMat);
-			eye.position.set(0, 0, -0.4); 
+			eye.position.set(0, 0, -0.5); 
 			robotGroup.add(eye);
 			
-			robotGroup.renderOrder = 999; // Ensure it draws last (on top)
-			viewer.scene.scene.add(robotGroup);
+			// 3. THE FIX: Attach the drone DIRECTLY to the camera as a child!
+			let camera = viewer.scene.getActiveCamera();
+			camera.add(robotGroup);
+			viewer.scene.scene.add(camera); // Force the camera to physically exist in the scene graph
 			
+			// Lock it exactly in front of the lens using LOCAL coordinates (X, Y, Z)
+			// Z is negative to be placed in front of the camera lens
+			robotGroup.position.set(0, -0.4, -1.2); 
+			robotGroup.scale.set(0.15, 0.15, 0.15); // Scale it down to fit perfectly on screen
+			
+			// 4. Gentle hover animation
 			viewer.addEventListener("update", () => {
-				let camera = viewer.scene.getActiveCamera();
-				if (!camera) return; 
-				
-				// 3. Guarantee it stays visible by pinning it just past the camera's near clipping plane
-				let safeDistance = camera.near + 0.5; 
-				let safeScale = safeDistance * 0.2; 
-				
-				robotGroup.scale.set(safeScale, safeScale, safeScale);
-				
-				// Place it slightly down and right in front of the lens
-				let offset = new THREE.Vector3(0, -0.3 * safeDistance, -safeDistance);
-				offset.applyMatrix4(camera.matrixWorld);
-				
-				robotGroup.position.copy(offset);
-				robotGroup.quaternion.copy(camera.quaternion);
-				
-				// 4. Gentle hover animation
 				let time = performance.now() * 0.003;
-				robotGroup.translateY(Math.sin(time) * (safeScale * 0.1));
+				// Animate only the Y position locally (up and down)
+				robotGroup.position.y = -0.4 + Math.sin(time) * 0.02;
 			});
 			// === END ROBOT DRONE CODE ===
 		});
