@@ -111,48 +111,81 @@
 			
 			scene.addPointCloud(pointcloud);
 			
-			// 1. Zoom to fit the entire point cloud perfectly (Guarantees we don't spawn in the void)
+			// 1. Zoom to fit the entire point cloud perfectly
 			viewer.fitToScreen();
 			
-			// 2. Activate First-Person mode from this safe bird's-eye view
+			// 2. Activate First-Person mode
 			viewer.setControls(viewer.fpControls);
 
-			// Automatically calculate a good flying speed based on the size of the point cloud
 			let radius = pointcloud.boundingSphere.radius;
 			viewer.getControls().speed = radius * 0.05; 
 
-			// === CREATE A VISIBLE HOLOGRAPHIC ROBOT DRONE (CAMERA-ATTACHED) ===
+			// === CREATE A VISIBLE HOLOGRAPHIC HUMANOID (CAMERA-ATTACHED) ===
 			let robotGroup = new THREE.Group();
 			
-			// 1. Build a Sci-Fi Saucer Body
-			let bodyGeo = new THREE.CylinderGeometry(1, 1, 0.3, 16); 
-			bodyGeo.rotateX(Math.PI / 2);
-			let bodyMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc, wireframe: true, depthTest: false, transparent: true });
-			let body = new THREE.Mesh(bodyGeo, bodyMat);
-			robotGroup.add(body);
+			let suitMat = new THREE.MeshBasicMaterial({ color: 0xaaaaaa, depthTest: false, transparent: true, opacity: 0.9 }); 
+			let visorMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc, depthTest: false }); 
+
+			// 1. Torso
+			let torsoGeo = new THREE.BoxGeometry(0.8, 1.2, 0.4);
+			let torso = new THREE.Mesh(torsoGeo, suitMat);
+			robotGroup.add(torso);
+
+			// 2. Head (Pivot at neck)
+			let headGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+			headGeo.translate(0, 0.25, 0);
+			let head = new THREE.Mesh(headGeo, suitMat);
+			head.position.set(0, 0.6, 0);
+			torso.add(head);
+
+			// Visor (Glowing Eyes)
+			let visorGeo = new THREE.BoxGeometry(0.4, 0.15, 0.52);
+			let visor = new THREE.Mesh(visorGeo, visorMat);
+			visor.position.set(0, 0.25, -0.05);
+			head.add(visor);
+
+			// 3. Arms (Pivot at shoulders)
+			let armGeo = new THREE.BoxGeometry(0.25, 1.0, 0.25);
+			armGeo.translate(0, -0.5, 0);
 			
-			// 2. Build the glowing eye
-			let eyeGeo = new THREE.BoxGeometry(0.8, 0.2, 0.3);
-			let eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false });
-			let eye = new THREE.Mesh(eyeGeo, eyeMat);
-			eye.position.set(0, 0, -0.5); 
-			robotGroup.add(eye);
+			let leftArm = new THREE.Mesh(armGeo, suitMat);
+			leftArm.position.set(-0.55, 0.5, 0);
+			torso.add(leftArm);
+
+			let rightArm = new THREE.Mesh(armGeo, suitMat);
+			rightArm.position.set(0.55, 0.5, 0);
+			torso.add(rightArm);
+
+			// 4. Legs (Pivot at hips)
+			let legGeo = new THREE.BoxGeometry(0.3, 1.2, 0.3);
+			legGeo.translate(0, -0.6, 0);
+
+			let leftLeg = new THREE.Mesh(legGeo, suitMat);
+			leftLeg.position.set(-0.25, -0.6, 0);
+			torso.add(leftLeg);
+
+			let rightLeg = new THREE.Mesh(legGeo, suitMat);
+			rightLeg.position.set(0.25, -0.6, 0);
+			torso.add(rightLeg);
 			
-			// 3. THE FIX: Attach the drone DIRECTLY to the camera as a child!
+			// 5. Attach the humanoid DIRECTLY to the camera
 			let camera = viewer.scene.getActiveCamera();
 			camera.add(robotGroup);
-			viewer.scene.scene.add(camera); // Force the camera to physically exist in the scene graph
+			viewer.scene.scene.add(camera); 
 			
-			// Lock it exactly in front of the lens using LOCAL coordinates (X, Y, Z)
-			// Z is negative to be placed in front of the camera lens
-			robotGroup.position.set(0, -0.4, -1.2); 
-			robotGroup.scale.set(0.15, 0.15, 0.15); // Scale it down to fit perfectly on screen
+			robotGroup.position.set(0, -0.8, -2.5); 
+			robotGroup.scale.set(0.3, 0.3, 0.3);
 			
-			// 4. Gentle hover animation
+			// 6. Walking Animation Loop
 			viewer.addEventListener("update", () => {
-				let time = performance.now() * 0.003;
-				// Animate only the Y position locally (up and down)
-				robotGroup.position.y = -0.4 + Math.sin(time) * 0.02;
+				let time = performance.now() * 0.005;
+				
+				leftArm.rotation.x = Math.sin(time) * 0.6;
+				rightArm.rotation.x = Math.sin(time + Math.PI) * 0.6;
+				leftLeg.rotation.x = Math.sin(time + Math.PI) * 0.6;
+				rightLeg.rotation.x = Math.sin(time) * 0.6;
+				
+				robotGroup.position.y = -0.8 + Math.abs(Math.sin(time)) * 0.05;
 			});
 			// === END ROBOT DRONE CODE ===
 		});
